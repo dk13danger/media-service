@@ -12,6 +12,3 @@ CREATE TABLE log (
     status  INTEGER NOT NULL DEFAULT -1,
     message VARCHAR(300) DEFAULT ''
 );
-
---INSERT INTO files(url, hash, resolution, bitrate) VALUES ('test-url', 'test-hash', 'res', 'bit');
---INSERT INTO log(file_id, status, message) VALUES (1, 'pending', 'hooray!');
