@@ -13,10 +13,12 @@ RUN apt-get update \
  && make build
 
 # ===== FINAL IMAGE
-FROM debian:jessie
+FROM ubuntu:16.04
 COPY --from=builder /media-service.o /media-service
 
-RUN add-apt-repository --yes ppa:jonathonf/ffmpeg-3 \
+RUN apt-get update \
+ && apt-get install --no-install-recommends -y software-properties-common \
+ && add-apt-repository --yes ppa:jonathonf/ffmpeg-3 \
  && apt-get update \
  && apt-get install --no-install-recommends -y sqlite3 libsqlite3-dev ffmpeg libav-tools x264 x265
 

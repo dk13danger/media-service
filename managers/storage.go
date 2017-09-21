@@ -48,59 +48,59 @@ func NewStorageManager(
 	}
 }
 
-func (p *StorageManager) Run() (chan<- *LogMessage, chan<- *FileMessage) {
+func (sm *StorageManager) Run() (chan<- *LogMessage, chan<- *FileMessage) {
 	go func() {
 		for {
 			select {
-			case msg, ok := <-p.logInput:
+			case msg, ok := <-sm.logInput:
 				if !ok {
-					p.logInput = nil
+					sm.logInput = nil
 					break
 				}
-				id, err := p.storage.GetFileIdByUrl(msg.FileUrl)
+				id, err := sm.storage.GetFileIdByUrl(msg.FileUrl)
 				if err != nil {
-					p.logger.Errorf("Error while fetching file id: %v", err)
+					sm.logger.Errorf("Error while fetching file id: %v", err)
 					break
 				}
-				err = p.storage.InsertLog(&storage.LogModel{
+				err = sm.storage.InsertLog(&storage.LogModel{
 					FileId:  id,
 					Status:  msg.Status,
 					Message: msg.Message,
 				})
 				if err != nil {
-					p.logger.Errorf("Error while inserting logInput message: %v", err)
+					sm.logger.Errorf("Error while inserting logInput message: %v", err)
 				}
-			case file, ok := <-p.fileInput:
+			case file, ok := <-sm.fileInput:
 				if !ok {
-					p.fileInput = nil
+					sm.fileInput = nil
 					break
 				}
-				err := p.storage.InsertFile(&storage.FileModel{
+				err := sm.storage.InsertFile(&storage.FileModel{
 					Url:        file.Url,
 					Hash:       file.Hash,
 					BitRate:    file.BitRate,
 					Resolution: file.Resolution,
 				})
 				if err != nil {
-					p.logger.Errorf("Error while inserting file: %v", err)
+					sm.logger.Errorf("Error while inserting file: %v", err)
 				}
 			}
 
-			if p.logInput == nil && p.fileInput == nil {
-				p.done <- struct{}{}
+			if sm.logInput == nil && sm.fileInput == nil {
+				sm.done <- struct{}{}
 				return
 			}
 		}
 	}()
 
-	return p.logInput, p.fileInput
+	return sm.logInput, sm.fileInput
 }
 
 // Stop stops storage process (writing to database, filesystem, whatever..).
 // Queue channel is closed and all requests will be storaged
-func (p *StorageManager) Stop() {
-	close(p.logInput)
-	close(p.fileInput)
-	p.logger.Debug("Storage queues closed")
-	<-p.done
+func (sm *StorageManager) Stop() {
+	close(sm.logInput)
+	close(sm.fileInput)
+	sm.logger.Debug("Storage queues closed")
+	<-sm.done
 }

@@ -118,7 +118,7 @@ func (s *Service) processTask(e Task, attempt int) (*managers.FileMessage, error
 		return nil, fmt.Errorf("all attempts are spent (count: %s)", s.cfg.Attempts)
 	}
 
-	s.logger.Debugf("Processing service task. Attempt number: #%s", attempt)
+	s.logger.Debugf("Processing service task. Attempt number: #%d", attempt)
 
 	filePath, err := s.downloadFromUrl(e.Url)
 	if err != nil {
@@ -181,7 +181,7 @@ func (s *Service) downloadFromUrl(url string) (string, error) {
 
 	s.logToStorage(
 		managers.STATUS_PENDING,
-		fmt.Sprintf("Done! Time elapsed: %s (%s bytes downloaded)", time.Since(start), n),
+		fmt.Sprintf("Done! Time elapsed: %q (%d bytes downloaded)", time.Since(start), n),
 		url,
 	)
 

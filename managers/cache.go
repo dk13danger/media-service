@@ -42,7 +42,6 @@ func (c *CacheManager) Get(key string) bool {
 	}
 	if err != nil {
 		return false
-		//return nil, err
 	}
 	return value.(bool)
 }

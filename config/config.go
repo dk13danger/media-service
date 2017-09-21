@@ -42,7 +42,7 @@ type CacheManager struct {
 func MustInit(filePath string) *Config {
 	content, err := ioutil.ReadFile(filePath)
 	if err != nil {
-		panic(fmt.Sprintf("Error while reading config file '%s': %v", filePath, err))
+		panic(fmt.Sprintf("Error while reading config file %q: %v", filePath, err))
 	}
 	cfg := &Config{}
 	if err := yaml.Unmarshal(content, cfg); err != nil {
