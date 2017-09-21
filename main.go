@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"os"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/dk13danger/media-service/config"
@@ -12,15 +13,14 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-var cfgFile = flag.String("config", "cfg/config.yml", "path to config (default: cfg/config.yml)")
-var debug = flag.Bool("debug", false, "debug mode (default: false)")
+var cfgFile = flag.String("config", "cfg/dev.yml", "path to config (default: cfg/dev.yml)")
 
 func main() {
 	flag.Parse()
 	cfg := config.MustInit(*cfgFile)
 
 	logger := logrus.New()
-	if *debug {
+	if os.Getenv("DEBUG_MODE") == "true" {
 		logger.Level = logrus.DebugLevel
 	} else {
 		gin.SetMode(gin.ReleaseMode)
