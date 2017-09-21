@@ -42,12 +42,14 @@ For developing:
 make recompile && bash launch.sh run
 ```
 
-### Run as docker container:
+### Run as docker container
+
 ```bash
 make docker && bash launch.sh run-docker
 ```
 
-### For testing:
+### For testing
+
 ```bash
 # send one request for downloading
 bash launch.sh test-light
