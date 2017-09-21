@@ -1,0 +1,6 @@
+vendor
+.idea
+.vagrant
+media-service.o
+media.db
+ubuntu-xenial-16.04-cloudimg-console.log
