@@ -15,8 +15,8 @@ test_web() {
 
 case "$1" in
     "run")
-        make recompile
-        go run media-service.o
+        export DEBUG_MODE=${DEBUG_MODE}
+        ./media-service.o
         ;;
     "run-docker")
         docker run -it --rm \
