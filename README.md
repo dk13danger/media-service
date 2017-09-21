@@ -32,15 +32,19 @@ vagrant ssh
 ### Run as local binary
 
 For local testing run:
-```bash 
-make build
-bash launch.sh run
+```bash
+make build && bash launch.sh run
+```
+
+For developing:
+```bash
+# remember: you must before building source (see above)
+make recompile && bash launch.sh run
 ```
 
 ### Run as docker container:
 ```bash
-make docker
-bash launch.sh run-docker
+make docker && bash launch.sh run-docker
 ```
 
 ### For testing:
