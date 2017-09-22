@@ -8,7 +8,7 @@ type FileModel struct {
 }
 
 type LogModel struct {
-	FileId  int
+	Url     string
 	Status  int
 	Message string
 }

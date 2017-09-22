@@ -7,8 +7,8 @@ GLIDE_VERSION=0.12.3
 # Update and install stuff
 add-apt-repository --yes ppa:jonathonf/ffmpeg-3
 apt-get update
-apt-get install --no-install-recommends -y git make gcc openssh-client libxslt-dev libicu-dev unzip \
-    ffmpeg libav-tools x264 x265 sqlite3 libsqlite3-dev
+apt-get install --no-install-recommends -y \
+        git make gcc openssh-client libxslt-dev libicu-dev unzip ffmpeg libav-tools x264 x265 sqlite3 libsqlite3-dev
 
 # Install docker
 curl -fsSL https://get.docker.com/ | sh

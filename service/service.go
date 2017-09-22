@@ -53,7 +53,6 @@ func NewService(
 		logger.Debugf("Service dir %q not exists yet. Trying to create", cfg.OutputDir)
 		os.Mkdir(cfg.OutputDir, os.ModeDir)
 	}
-
 	return &Service{
 		logger:         logger,
 		cacheManager:   cacheManager,
@@ -68,9 +67,7 @@ func NewService(
 
 func (s *Service) Run() chan<- Task {
 	s.logger.Info("Starting storage manager")
-	outputLog, outputFile := s.storageManager.Run()
-	s.outputLog = outputLog
-	s.outputFile = outputFile
+	s.outputLog, s.outputFile = s.storageManager.Run()
 
 	s.wg.Add(s.cfg.Workers)
 	for i := 0; i < s.cfg.Workers; i++ {

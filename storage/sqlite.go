@@ -10,17 +10,15 @@ import (
 )
 
 type storage struct {
-	logger                *logrus.Logger
-	db                    *sql.DB
-	insertFilesStmt       *sql.Stmt
-	insertLogStmt         *sql.Stmt
-	selectFilesStmt       *sql.Stmt
-	selectFilesByUrlStmt  *sql.Stmt
-	selectFileIdByUrlStmt *sql.Stmt
+	logger               *logrus.Logger
+	db                   *sql.DB
+	insertFilesStmt      *sql.Stmt
+	insertLogStmt        *sql.Stmt
+	selectFilesStmt      *sql.Stmt
+	selectFilesByUrlStmt *sql.Stmt
 }
 
 type Storager interface {
-	GetFileIdByUrl(url string) (int, error)
 	GetStatistic() ([]byte, error)
 	GetStatisticByUrl(url string) ([]byte, error)
 	InsertLog(model *LogModel) error
@@ -39,23 +37,6 @@ func NewSqliteStorage(logger *logrus.Logger, dbPath string) Storager {
 	return s
 }
 
-func (s *storage) GetFileIdByUrl(url string) (int, error) {
-	rows, err := s.selectFileIdByUrlStmt.Query(url)
-	if err != nil {
-		return -1, err
-	}
-	defer rows.Close()
-
-	var id int
-	for rows.Next() {
-		if err = rows.Scan(&id); err != nil {
-			return -1, err
-		}
-	}
-
-	return id, nil
-}
-
 func (s *storage) GetStatisticByUrl(url string) ([]byte, error) {
 	return getStatistic(s.selectFilesByUrlStmt, url)
 }
@@ -70,7 +51,7 @@ func (s *storage) InsertFile(model *FileModel) error {
 }
 
 func (s *storage) InsertLog(model *LogModel) error {
-	_, err := s.insertLogStmt.Exec(model.FileId, model.Status, model.Message)
+	_, err := s.insertLogStmt.Exec(model.Url, model.Status, model.Message)
 	return err
 }
 
@@ -80,45 +61,39 @@ func prepareStatements(logger *logrus.Logger, db *sql.DB) (Storager, error) {
 		return nil, err
 	}
 
-	insertLogStmt, err := db.Prepare("INSERT INTO log(file_id, status, message) VALUES (?,?,?)")
+	insertLogStmt, err := db.Prepare("INSERT INTO log(url, status, message) VALUES (?,?,?)")
 	if err != nil {
 		return nil, err
 	}
 
 	selectFilesStmt, err := db.Prepare(`
-		SELECT f.id, f.url, f.hash, f.bitrate, f.resolution, l.status, l.message
+		SELECT f.url, f.hash, f.bitrate, f.resolution, l.status, l.message
 		  FROM files f
 		  JOIN log l
-			ON l.file_id = f.id
+			ON l.url = f.url
 	`)
 	if err != nil {
 		return nil, err
 	}
 
 	selectFilesByUrlStmt, err := db.Prepare(`
-		SELECT f.id, f.url, f.hash, f.bitrate, f.resolution, l.status, l.message
+		SELECT f.url, f.hash, f.bitrate, f.resolution, l.status, l.message
 		  FROM files f
 		  JOIN log l
-			ON l.file_id = f.id
+			ON l.url = f.url
 		 WHERE f.url = ?
 	`)
 	if err != nil {
 		return nil, err
 	}
 
-	selectFileIdByUrlStmt, err := db.Prepare(`SELECT id FROM files WHERE url = ?`)
-	if err != nil {
-		return nil, err
-	}
-
 	return &storage{
-		logger:                logger,
-		db:                    db,
-		insertFilesStmt:       insertFilesStmt,
-		insertLogStmt:         insertLogStmt,
-		selectFilesStmt:       selectFilesStmt,
-		selectFilesByUrlStmt:  selectFilesByUrlStmt,
-		selectFileIdByUrlStmt: selectFileIdByUrlStmt,
+		logger:               logger,
+		db:                   db,
+		insertFilesStmt:      insertFilesStmt,
+		insertLogStmt:        insertLogStmt,
+		selectFilesStmt:      selectFilesStmt,
+		selectFilesByUrlStmt: selectFilesByUrlStmt,
 	}, nil
 }
 
@@ -129,12 +104,11 @@ func getStatistic(stmt *sql.Stmt, args ...interface{}) ([]byte, error) {
 	}
 	defer rows.Close()
 
-	var id int
 	var url, hash, bitrate, resolution, status, message string
 
-	files := make(map[int]map[string]interface{})
+	files := make(map[string]map[string]interface{})
 	for rows.Next() {
-		if err = rows.Scan(&id, &url, &hash, &bitrate, &resolution, &status, &message); err != nil {
+		if err = rows.Scan(&url, &hash, &bitrate, &resolution, &status, &message); err != nil {
 			return nil, err
 		}
 
@@ -143,17 +117,18 @@ func getStatistic(stmt *sql.Stmt, args ...interface{}) ([]byte, error) {
 			"message": message,
 		}
 
-		if file, ok := files[id]; ok {
+		if file, ok := files[url]; ok {
 			file["log"] = append(file["log"].([]map[string]string), log)
 			continue
 		}
 
 		file := make(map[string]interface{}, 0)
-		file["url"] = url
 		file["hash"] = hash
+		file["bitrate"] = bitrate
+		file["resolution"] = resolution
 		file["log"] = []map[string]string{log}
 
-		files[id] = file
+		files[url] = file
 	}
 
 	b, err := json.Marshal(files)

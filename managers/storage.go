@@ -16,7 +16,7 @@ const (
 type LogMessage struct {
 	Status  int
 	Message string
-	FileUrl string
+	Url     string
 }
 
 type FileMessage struct {
@@ -57,18 +57,13 @@ func (sm *StorageManager) Run() (chan<- *LogMessage, chan<- *FileMessage) {
 					sm.logInput = nil
 					break
 				}
-				id, err := sm.storage.GetFileIdByUrl(msg.FileUrl)
-				if err != nil {
-					sm.logger.Errorf("Error while fetching file id: %v", err)
-					break
-				}
-				err = sm.storage.InsertLog(&storage.LogModel{
-					FileId:  id,
+				err := sm.storage.InsertLog(&storage.LogModel{
+					Url:     msg.Url,
 					Status:  msg.Status,
 					Message: msg.Message,
 				})
 				if err != nil {
-					sm.logger.Errorf("Error while inserting logInput message: %v", err)
+					sm.logger.Errorf("Error while inserting log message: %v", err)
 				}
 			case file, ok := <-sm.fileInput:
 				if !ok {

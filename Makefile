@@ -1,4 +1,4 @@
-all: dev
+all: build
 
 .PHONY: glide
 glide:
