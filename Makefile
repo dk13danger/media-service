@@ -12,7 +12,7 @@ db:
 
 .PHONY: build
 build: glide db
-	CGO_ENABLED=1 go build -a -installsuffix cgo -o /media-service.o .
+	CGO_ENABLED=1 go build -a -installsuffix cgo -o ./media-service.o .
 
 .PHONY: recompile
 recompile:
