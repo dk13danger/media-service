@@ -23,7 +23,6 @@ case "$1" in
             -e DEBUG_MODE=${DEBUG_MODE} \
             -p 8080:8080 \
             -v ${SERVICE_DIR}/cfg/prod.yml:/etc/media-service/config.yml \
-            -v ${SERVICE_DIR}/sys/media.db:/etc/media-service/media.db \
             media-service:latest
         ;;
     "test-web")

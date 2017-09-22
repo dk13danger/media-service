@@ -10,11 +10,14 @@ RUN curl https://glide.sh/get | sh
 # Install dependencies and build executable file
 RUN apt-get update \
  && apt-get install --no-install-recommends -y make sqlite3 libsqlite3-dev \
- && make build
+ && make build \
+ && mv ${GOPATH}/src/github.com/dk13danger/media-service/media-service.o /media-service.o \
+ && mv ${GOPATH}/src/github.com/dk13danger/media-service/sys/media.db /media.db
 
 # ===== FINAL IMAGE
 FROM ubuntu:16.04
 COPY --from=builder /media-service.o /media-service
+COPY --from=builder /media.db /etc/media-service/media.db
 
 RUN apt-get update \
  && apt-get install --no-install-recommends -y software-properties-common \
