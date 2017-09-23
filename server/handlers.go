@@ -11,7 +11,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func downloadHandler(downloadQueue chan<- service.Task, logger *logrus.Logger) func(c *gin.Context) {
+func downloadHandler(downloadQueue chan<- *service.Task, logger *logrus.Logger) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		url := c.Query("url")
 		md5 := c.Query("md5")
@@ -23,9 +23,9 @@ func downloadHandler(downloadQueue chan<- service.Task, logger *logrus.Logger) f
 			return
 		}
 
-		downloadQueue <- service.Task{
-			Url: url,
-			MD5: md5,
+		downloadQueue <- &service.Task{
+			Url:  url,
+			Hash: md5,
 		}
 	}
 }
@@ -55,7 +55,7 @@ func statisticHandler(storageProvider storage.Storager, logger *logrus.Logger) f
 		}
 
 		logger.Infof("Trying to get statistics by url: %q", url)
-		b, err := storageProvider.GetStatisticByUrl(url)
+		b, err := storageProvider.GetStatisticByUrl(url, "") // TODO!!!
 		if err != nil {
 			msg := fmt.Sprintf("Ooops: %v", err)
 			logger.Errorf(msg)
@@ -72,7 +72,7 @@ func validateQueryParams(url string, md5 string) error {
 		return err
 	}
 	if md5 == "" && len(md5) != 32 {
-		return fmt.Errorf("MD5 length invalid. Must be: %d", 32)
+		return fmt.Errorf("hash length invalid. Must be: %d", 32)
 	}
 	return nil
 }

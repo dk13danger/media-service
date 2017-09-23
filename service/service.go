@@ -16,6 +16,7 @@ import (
 	"github.com/Sirupsen/logrus"
 	"github.com/dk13danger/media-service/config"
 	"github.com/dk13danger/media-service/managers"
+	"github.com/dk13danger/media-service/storage"
 )
 
 type Config struct {
@@ -26,27 +27,25 @@ type Config struct {
 }
 
 type Service struct {
-	logger         *logrus.Logger
-	cacheManager   *managers.CacheManager
-	storageManager *managers.StorageManager
-	cfg            *config.Service
-	regexp         *regexp.Regexp
-	wg             *sync.WaitGroup
-	inputTasks     chan Task
-	outputLog      chan<- *managers.LogMessage
-	outputFile     chan<- *managers.FileMessage
-	done           chan struct{}
+	logger       *logrus.Logger
+	cacheManager *managers.CacheManager
+	storage      storage.Storager
+	cfg          *config.Service
+	regexp       *regexp.Regexp
+	wg           *sync.WaitGroup
+	inputTasks   chan *Task
+	done         chan struct{}
 }
 
 type Task struct {
-	Url string
-	MD5 string
+	Url  string
+	Hash string
 }
 
 func NewService(
-	logger *logrus.Logger,
+	storage storage.Storager,
 	cacheManager *managers.CacheManager,
-	storageManager *managers.StorageManager,
+	logger *logrus.Logger,
 	cfg *config.Service,
 ) *Service {
 	if _, err := os.Stat(cfg.OutputDir); os.IsNotExist(err) {
@@ -54,33 +53,31 @@ func NewService(
 		os.Mkdir(cfg.OutputDir, os.ModeDir)
 	}
 	return &Service{
-		logger:         logger,
-		cacheManager:   cacheManager,
-		storageManager: storageManager,
-		cfg:            cfg,
-		regexp:         regexp.MustCompile(`(?m)^width=(\d+)\r*\n*height=(\d+)\r*\n*bit_rate=(\d+).*$`),
-		wg:             &sync.WaitGroup{},
-		inputTasks:     make(chan Task, cfg.ChannelSize),
-		done:           make(chan struct{}, 1),
+		logger:       logger,
+		cacheManager: cacheManager,
+		storage:      storage,
+		cfg:          cfg,
+		regexp:       regexp.MustCompile(`(?m)^width=(\d+)\r*\n*height=(\d+)\r*\n*bit_rate=(\d+).*$`),
+		wg:           &sync.WaitGroup{},
+		inputTasks:   make(chan *Task, cfg.ChannelSize),
+		done:         make(chan struct{}, 1),
 	}
 }
 
-func (s *Service) Run() chan<- Task {
-	s.logger.Info("Starting storage manager")
-	s.outputLog, s.outputFile = s.storageManager.Run()
-
+func (s *Service) Run() chan<- *Task {
 	s.wg.Add(s.cfg.Workers)
 	for i := 0; i < s.cfg.Workers; i++ {
 		s.logger.Debugf("Starting download worker number: #%d", i)
 		go func() {
 			for t := range s.inputTasks {
-				if file, err := s.processTask(t, 1); err != nil {
-					s.logToStorage(managers.STATUS_FAILED, fmt.Sprintf("Error processing task: %v", err), t.Url)
-				} else {
-					if file != nil {
-						s.logToStorage(managers.STATUS_COMPLETED, "File has been processed successfully!", t.Url)
-						s.outputFile <- file
-					}
+				key := fmt.Sprintf("%s-%s", t.Url, t.Hash)
+				if s.cacheManager.Get(key) {
+					s.logger.Debug("File already downloading. Please wait..")
+					continue
+				}
+
+				if err := s.processTask(t, 1, key); err != nil {
+					s.logger.Errorf("Error while processing task: %v", err)
 				}
 			}
 			s.logger.Debugf("Stop download worker")
@@ -95,61 +92,84 @@ func (s *Service) Stop() {
 	s.logger.Debug("Service task queue closed")
 	s.logger.Debugf("Wait while %d service workers stopping..", s.cfg.Workers)
 	s.wg.Wait()
-
-	s.logger.Debug("Stopping storage manager")
-	s.storageManager.Stop()
-	s.logger.Debug("Storage manager stopped")
 }
 
-func (s *Service) processTask(e Task, attempt int) (*managers.FileMessage, error) {
-	if s.cacheManager.Get(e.Url) {
-		msg := "File already downloading. Please wait.."
-		s.logger.Debug(msg)
-		s.outputLog <- &managers.LogMessage{managers.STATUS_PENDING, msg, e.Url}
-		return nil, nil
+func (s *Service) processTask(t *Task, attempt int, key string) error {
+	s.cacheManager.Set(key)
+	defer s.cacheManager.Remove(key)
+
+	fileId, err := s.storage.SelectFile(t.Url, t.Hash)
+	if err != nil {
+		return fmt.Errorf("error while selecting file, url: %q, hash: %q", t.Url, t.Hash)
+	}
+	if fileId < 0 {
+		fileId, err = s.storage.InsertFile(&storage.FileModel{
+			Url:  t.Url,
+			Hash: t.Hash,
+		})
+		if err != nil {
+			return fmt.Errorf("error while inserting file, url: %q, hash: %q", t.Url, t.Hash)
+		}
 	}
 
-	s.cacheManager.Set(e.Url)
-
 	if attempt > s.cfg.Attempts {
-		return nil, fmt.Errorf("all attempts are spent (count: %s)", s.cfg.Attempts)
+		msg := fmt.Sprintf("all attempts are spent (count: %d)", s.cfg.Attempts)
+		s.logToStorage(fileId, storage.STATUS_FAILED, msg)
+		return fmt.Errorf(msg)
+	}
+
+	completed, err := s.storage.CheckFileIsCompleted(1)
+	if err != nil {
+		return fmt.Errorf("error while checking file: %v", err)
+	}
+	if completed {
+		s.logger.Info("File already processed successfully. Skip.")
+		return nil
 	}
 
 	s.logger.Debugf("Processing service task. Attempt number: #%d", attempt)
+	s.logToStorage(fileId, storage.STATUS_PENDING, "Start downloading")
 
-	filePath, err := s.downloadFromUrl(e.Url)
+	filePath, err := s.download(fileId, t)
 	if err != nil {
-		s.logToStorage(managers.STATUS_ERROR, fmt.Sprintf("Error while downloading file: %v", err), e.Url)
-		return s.processTask(e, attempt+1)
+		s.logToStorage(fileId, storage.STATUS_ERROR, fmt.Sprintf("Error while downloading file: %v", err))
+		return s.processTask(t, attempt+1, key)
 	}
 
-	if err := s.validateChecksum(filePath, e.MD5); err != nil {
-		s.logToStorage(managers.STATUS_ERROR, fmt.Sprintf("Error while validating checksum: %v", err), e.Url)
-		return s.processTask(e, attempt+1)
+	if err := s.validateChecksum(filePath, t.Hash); err != nil {
+		s.logToStorage(fileId, storage.STATUS_ERROR, fmt.Sprintf("Error while validating checksum: %v", err))
+		return s.processTask(t, attempt+1, key)
 	}
 
 	bitRate, resolution, err := s.getMediaInfo(filePath)
 	if err != nil {
-		return nil, err
+		s.logToStorage(fileId, storage.STATUS_FAILED, fmt.Sprintf("Error while getting media info: %v", err))
+		return fmt.Errorf("error while getting media info: %v", err)
 	}
 
-	s.cacheManager.Remove(e.Url)
-
-	return &managers.FileMessage{
-		Url:        e.Url,
-		Hash:       e.MD5,
+	_, err = s.storage.UpdateFile(&storage.FileModel{
+		Id:         fileId,
+		Url:        t.Url,
+		Hash:       t.Hash,
 		BitRate:    bitRate,
 		Resolution: resolution,
-	}, nil
+	})
+	if err != nil {
+		return fmt.Errorf("error while updating file: %v", err)
+	}
+	s.logToStorage(fileId, storage.STATUS_COMPLETED, "Task completed")
+
+	return nil
 }
 
-func (s *Service) downloadFromUrl(url string) (string, error) {
-	tokens := strings.Split(url, "/")
-	filePath := fmt.Sprintf("%s/%s", s.cfg.OutputDir, tokens[len(tokens)-1])
+func (s *Service) download(fileId int, t *Task) (string, error) {
+	tokens := strings.Split(t.Url, "/")
+	filePath := fmt.Sprintf("%s/%s-%s", s.cfg.OutputDir, tokens[len(tokens)-1], t.Hash)
 
-	if _, err := os.Stat(filePath); os.IsExist(err) {
-		s.logger.Infof("File %q already exists on local filesystem. Skip downloading", filePath)
-		return filePath, nil
+	if _, err := os.Stat(filePath); err == nil {
+		if err = os.Remove(filePath); err != nil {
+			return "", fmt.Errorf("can't remove file %q from local filesystem", filePath)
+		}
 	}
 
 	output, err := os.Create(filePath)
@@ -158,16 +178,12 @@ func (s *Service) downloadFromUrl(url string) (string, error) {
 	}
 	defer output.Close()
 
-	s.logToStorage(
-		managers.STATUS_PENDING,
-		fmt.Sprintf("Downloading from url: %q to file: %q started..", url, filePath),
-		url,
-	)
+	s.logToStorage(fileId, storage.STATUS_PENDING, fmt.Sprintf("Start downloading from url: %q", t.Url))
 	start := time.Now()
 
-	response, err := http.Get(url)
+	response, err := http.Get(t.Url)
 	if err != nil {
-		return "", fmt.Errorf("error while downloading url %q: %v", url, err)
+		return "", fmt.Errorf("error while downloading url %q: %v", t.Url, err)
 	}
 	defer response.Body.Close()
 
@@ -176,17 +192,18 @@ func (s *Service) downloadFromUrl(url string) (string, error) {
 		return "", fmt.Errorf("error while copying to file %q: %v", filePath, err)
 	}
 
-	s.logToStorage(
-		managers.STATUS_PENDING,
-		fmt.Sprintf("Done! Time elapsed: %q (%d bytes downloaded)", time.Since(start), n),
-		url,
-	)
+	s.logToStorage(fileId, storage.STATUS_PENDING, fmt.Sprintf(
+		"Finish downloading. Time elapsed: %q (%d bytes downloaded), file path: %q",
+		time.Since(start),
+		n,
+		filePath,
+	))
 
 	return filePath, nil
 }
 
 func (s *Service) validateChecksum(filePath, checksum string) error {
-	s.logger.Debugf("Get MD5 hash from file: %q", filePath)
+	s.logger.Debugf("Get Hash hash from file: %q", filePath)
 	hash, err := s.getMD5(filePath)
 	if err != nil {
 		return fmt.Errorf("error while getting md5 hash: %v", err)
@@ -230,12 +247,22 @@ func (s *Service) getMediaInfo(filePath string) (bitRate, resolution string, err
 	return fmt.Sprintf("%sx%s", match[1], match[2]), string(match[3]), nil
 }
 
-func (s *Service) logToStorage(status int, msg, url string) {
+func (s *Service) logToStorage(fileId, status int, msg string) error {
 	switch status {
-	case managers.STATUS_PENDING, managers.STATUS_COMPLETED:
+	case storage.STATUS_PENDING, storage.STATUS_COMPLETED:
 		s.logger.Info(msg)
-	case managers.STATUS_FAILED, managers.STATUS_ERROR:
+	case storage.STATUS_FAILED, storage.STATUS_ERROR:
 		s.logger.Error(msg)
 	}
-	s.outputLog <- &managers.LogMessage{status, msg, url}
+
+	_, err := s.storage.InsertLog(&storage.LogModel{
+		FileId:  fileId,
+		Message: msg,
+		Status:  status,
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

@@ -27,11 +27,30 @@ func main() {
 	}
 
 	sqLiteProvider := storage.NewSqliteStorage(logger, cfg.DbFilepath)
-	storageManager := managers.NewStorageManager(logger, sqLiteProvider, &cfg.StorageManager)
 	cacheManager := managers.NewCacheManager(logger, &cfg.CacheManager)
 
-	srv := service.NewService(logger, cacheManager, storageManager, &cfg.Service)
 
-	web := server.NewServer(srv, sqLiteProvider, logger, &cfg.Server)
-	web.Run()
+	//if f, err := sqLiteProvider.CheckFileIsCompleted(1); err != nil {
+	//	logger.Error(err)
+	//} else {
+	//	logger.Warn(f)
+	//}
+	//logger.Fatal()
+
+
+
+
+
+
+
+
+
+	srv := service.NewService(sqLiteProvider, cacheManager, logger, &cfg.Service)
+	downloadQueue := srv.Run()
+
+	web := server.NewServer(sqLiteProvider, logger, &cfg.Server)
+	web.Run(downloadQueue)
+
+	srv.Stop()
+	logger.Debug("Service stopped")
 }

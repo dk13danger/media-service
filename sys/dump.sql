@@ -3,14 +3,18 @@
 -- т.к. проект надо было сдавать как можно скорее
 
 CREATE TABLE files (
-    url        VARCHAR(255) PRIMARY KEY,
-    hash       VARCHAR(32),
-    resolution VARCHAR(50),
-    bitrate    VARCHAR(50)
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    url        VARCHAR(255) NOT NULL,
+    hash       VARCHAR(32)  NOT NULL,
+    resolution VARCHAR(20) DEFAULT '',
+    bitrate    VARCHAR(20) DEFAULT ''
 );
 
 CREATE TABLE log (
-    url     VARCHAR(255) NOT NULL,
-    status  INTEGER NOT NULL DEFAULT -1,
-    message VARCHAR(300) DEFAULT ''
+    id      INTEGER PRIMARY KEY AUTOINCREMENT,
+    file_id INTEGER NOT NULL,
+    status  INTEGER NOT NULL,
+    message VARCHAR(300) NOT NULL
 );
+
+CREATE UNIQUE INDEX idx_files_url_hash ON files (url, hash);

@@ -16,29 +16,37 @@ import (
 )
 
 type Server struct {
-	service *service.Service
 	storage storage.Storager
 	logger  *logrus.Logger
 	cfg     *config.Server
 }
 
 func NewServer(
-	service *service.Service,
 	storage storage.Storager,
 	logger *logrus.Logger,
 	cfg *config.Server,
 ) *Server {
 	return &Server{
-		service: service,
 		storage: storage,
 		logger:  logger,
 		cfg:     cfg,
 	}
 }
 
-func (s *Server) Run() {
-	s.logger.Debug("Starting service")
-	downloadQueue := s.service.Run()
+func (s *Server) Run(downloadQueue chan<- *service.Task) {
+	files, err := s.storage.Select1InterruptFiles()
+	if err != nil {
+		s.logger.Infof("Can't get list of interrupt tasks: %v", err)
+		return
+	}
+
+	for _, f := range files {
+		s.logger.Debugf("Continue downloading interrupted tasks (count: %d)..", len(files))
+		downloadQueue <- &service.Task{
+			Url:  f.Url,
+			Hash: f.Hash,
+		}
+	}
 
 	router := gin.Default()
 	router.GET("/dl", downloadHandler(downloadQueue, s.logger))
@@ -65,13 +73,4 @@ func (s *Server) Run() {
 	if err := srv.Shutdown(ctx); err != nil {
 		s.logger.Fatalf("Server shutdown err: %v", err)
 	}
-
-	s.logger.Println("Server shutdown finished")
-	s.Stop()
-}
-
-func (s *Server) Stop() {
-	s.logger.Debug("Stopping service")
-	s.service.Stop()
-	s.logger.Debug("Service stopped")
 }
