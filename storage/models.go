@@ -1,10 +1,10 @@
 package storage
 
 const (
-	STATUS_PENDING   = 2
-	STATUS_ERROR     = 4
-	STATUS_FAILED    = 5
-	STATUS_COMPLETED = 3
+	STATUS_PENDING   = 1
+	STATUS_ERROR     = 2
+	STATUS_FAILED    = 3
+	STATUS_COMPLETED = 4
 )
 
 type FileModel struct {

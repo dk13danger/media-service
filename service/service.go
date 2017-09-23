@@ -15,7 +15,6 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/dk13danger/media-service/config"
-	"github.com/dk13danger/media-service/managers"
 	"github.com/dk13danger/media-service/storage"
 )
 
@@ -28,7 +27,7 @@ type Config struct {
 
 type Service struct {
 	logger       *logrus.Logger
-	cacheManager *managers.CacheManager
+	cacheManager *CacheManager
 	storage      storage.Storager
 	cfg          *config.Service
 	regexp       *regexp.Regexp
@@ -44,7 +43,7 @@ type Task struct {
 
 func NewService(
 	storage storage.Storager,
-	cacheManager *managers.CacheManager,
+	cacheManager *CacheManager,
 	logger *logrus.Logger,
 	cfg *config.Service,
 ) *Service {

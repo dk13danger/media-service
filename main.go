@@ -6,7 +6,6 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/dk13danger/media-service/config"
-	"github.com/dk13danger/media-service/managers"
 	"github.com/dk13danger/media-service/server"
 	"github.com/dk13danger/media-service/service"
 	"github.com/dk13danger/media-service/storage"
@@ -27,7 +26,7 @@ func main() {
 	}
 
 	sqLiteProvider := storage.NewSqliteStorage(logger, cfg.DbFilepath)
-	cacheManager := managers.NewCacheManager(logger, &cfg.CacheManager)
+	cacheManager := service.NewCacheManager(logger, &cfg.CacheManager)
 
 	srv := service.NewService(sqLiteProvider, cacheManager, logger, &cfg.Service)
 	downloadQueue := srv.Run()
