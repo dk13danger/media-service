@@ -23,7 +23,7 @@ case "$1" in
         ./media-service.o
         ;;
     "run-docker")
-        docker run -it --rm \
+        docker run -it --rm --name media-service \
             -e DEBUG_MODE=${DEBUG_MODE} \
             -p 8080:8080 \
             -v ${SERVICE_DIR}/cfg/prod.yml:/etc/media-service/config.yml \

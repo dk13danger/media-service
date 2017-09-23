@@ -36,12 +36,12 @@ func NewServer(
 func (s *Server) Run(downloadQueue chan<- *service.Task) {
 	files, err := s.storage.Select1InterruptFiles()
 	if err != nil {
-		s.logger.Infof("Can't get list of interrupt tasks: %v", err)
+		s.logger.Errorf("Can't get list of interrupt tasks: %v", err)
 		return
 	}
 
 	for _, f := range files {
-		s.logger.Debugf("Continue downloading interrupted tasks (count: %d)..", len(files))
+		s.logger.Infof("Continue downloading interrupted tasks (count: %d)..", len(files))
 		downloadQueue <- &service.Task{
 			Url:  f.Url,
 			Hash: f.Hash,

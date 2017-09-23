@@ -127,7 +127,7 @@ func (s *Service) processTask(t *Task, attempt int, key string) error {
 	}
 
 	s.logger.Debugf("Processing service task. Attempt number: #%d", attempt)
-	s.logToStorage(fileId, storage.STATUS_PENDING, "Start downloading")
+	s.logToStorage(fileId, storage.STATUS_PENDING, "Start processing task")
 
 	filePath, err := s.download(fileId, t)
 	if err != nil {
@@ -202,7 +202,7 @@ func (s *Service) download(fileId int, t *Task) (string, error) {
 }
 
 func (s *Service) validateChecksum(filePath, checksum string) error {
-	s.logger.Debugf("Get Hash hash from file: %q", filePath)
+	s.logger.Debugf("Get hash from file: %q", filePath)
 	hash, err := s.getMD5(filePath)
 	if err != nil {
 		return fmt.Errorf("error while getting md5 hash: %v", err)
