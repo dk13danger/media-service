@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"strconv"
 
 	"github.com/Sirupsen/logrus"
 	_ "github.com/mattn/go-sqlite3"
@@ -152,7 +153,7 @@ func getStatistic(stmt *sql.Stmt, args ...interface{}) ([]byte, error) {
 		}
 
 		log := map[string]string{
-			"status":  status,
+			"status":  getStatus(status),
 			"message": message,
 		}
 
@@ -176,6 +177,20 @@ func getStatistic(stmt *sql.Stmt, args ...interface{}) ([]byte, error) {
 	}
 
 	return b, nil
+}
+
+func getStatus(status string) string {
+	switch status {
+	case strconv.Itoa(STATUS_PENDING):
+		return "pending"
+	case strconv.Itoa(STATUS_COMPLETED):
+		return "completed"
+	case strconv.Itoa(STATUS_FAILED):
+		return "failed"
+	case strconv.Itoa(STATUS_ERROR):
+		return "error"
+	}
+	return "not defined"
 }
 
 func prepareStatements(logger *logrus.Logger, db *sql.DB) (Storager, error) {
