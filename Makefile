@@ -11,7 +11,7 @@ db:
 	sqlite3 media.db < dump.sql
 
 .PHONY: build
-build: glide db
+build: glide
 	CGO_ENABLED=1 go build -a -installsuffix cgo -o ./media-service.o .
 
 .PHONY: recompile

@@ -63,7 +63,9 @@ bash launch.sh
 ### If you want develop
 
 ```bash
-# fast recompile and run
-# but remember: you must before building source if not yet (make build)
+# fast recompile and run, but remember: you must before building source if not yet (make build)
 make recompile && bash launch.sh run
+
+# if you want purge local db:
+make db
 ```
