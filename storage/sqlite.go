@@ -19,7 +19,7 @@ type storage struct {
 	selectFileStmt           *sql.Stmt
 	selectInterruptFilesStmt *sql.Stmt
 	updateFileStmt           *sql.Stmt
-	checkFileIsCompletedStmt           *sql.Stmt
+	checkFileIsCompletedStmt *sql.Stmt
 }
 
 type Storager interface {
@@ -255,6 +255,6 @@ func prepareStatements(logger *logrus.Logger, db *sql.DB) (Storager, error) {
 		selectFileStmt:           selectFileStmt,
 		selectInterruptFilesStmt: selectInterruptFilesStmt,
 		updateFileStmt:           updateFileStmt,
-		checkFileIsCompletedStmt:           checkFileIsCompletedStmt,
+		checkFileIsCompletedStmt: checkFileIsCompletedStmt,
 	}, nil
 }
