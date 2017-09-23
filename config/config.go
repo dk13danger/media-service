@@ -11,7 +11,6 @@ type Config struct {
 	DbFilepath     string         `yaml:"db_filepath"`
 	Server         Server         `yaml:"server"`
 	Service        Service        `yaml:"service"`
-	StorageManager StorageManager `yaml:"storage_manager"`
 	CacheManager   CacheManager   `yaml:"cache_manager"`
 }
 
@@ -25,11 +24,6 @@ type Service struct {
 	Workers     int    `yaml:"workers"`
 	Attempts    int    `yaml:"attempts"`
 	OutputDir   string `yaml:"output_dir"`
-}
-
-type StorageManager struct {
-	LogChannelSize  int `yaml:"log_channel_size"`
-	FileChannelSize int `yaml:"file_channel_size"`
 }
 
 type CacheManager struct {

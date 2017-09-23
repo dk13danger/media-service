@@ -11,10 +11,6 @@ service:
     attempts: 2
     output_dir: "/opt/media-service"
 
-storage_manager:
-    log_channel_size: 1000
-    file_channel_size: 100
-
 cache_manager:
     size: 20
     expiration: 300
