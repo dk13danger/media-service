@@ -9,8 +9,12 @@ download_single() {
     curl "${URL}/dl?url=${1}&md5=${2}"
 }
 
-test_web() {
-    curl "${URL}/st?url=${1}"
+get_statistic() {
+    if [ -z "$1" ]; then
+        curl "${URL}/st"
+    else
+        curl "${URL}/st?url=${1}&md5=${2}"
+    fi
 }
 
 case "$1" in
@@ -26,8 +30,10 @@ case "$1" in
             media-service:latest
         ;;
     "test-web")
-        test_web "http://www.sample-videos.com/video/mp4/720/big_buck_bunny_720p_1mb.mp4"
-        test_web ""
+        get_statistic "" ""
+        ;;
+    "test-web-params")
+        get_statistic "http://www.sample-videos.com/video/mp4/720/big_buck_bunny_720p_1mb.mp4" "d55bddf8d62910879ed9f605522149a8"
         ;;
     "test-light")
         download_single "http://www.sample-videos.com/video/mp4/720/big_buck_bunny_720p_1mb.mp4" "d55bddf8d62910879ed9f605522149a8"
@@ -41,7 +47,7 @@ case "$1" in
         download_single "http://www.sample-videos.com/video/mp4/720/big_buck_bunny_720p_3mb.mp4" "${INVALID_HASH}"
         ;;
     *)
-        echo "Usage: $(basename $0) <build> | <run> | <run-docker> | <test-web> | <test-light> | <test-heavy>"
+        echo "Usage: $(basename $0) <build> | <run> | <run-docker> | <test-web> | <test-web-params> | <test-light> | <test-heavy>"
         exit 1
        ;;
 esac
