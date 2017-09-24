@@ -18,13 +18,6 @@ import (
 	"github.com/dk13danger/media-service/storage"
 )
 
-type Config struct {
-	Dir         string
-	Attempts    int
-	Workers     int
-	ChannelSize int
-}
-
 type Service struct {
 	logger       *logrus.Logger
 	cacheManager *CacheManager
